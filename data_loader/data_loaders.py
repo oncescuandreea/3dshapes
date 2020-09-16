@@ -17,7 +17,8 @@ class ShapeLoader(BaseDataLoader):
         self.data_dir = data_dir
         self.dataset = Shapes3d(self.data_dir, transform=trsfm,
                                 train=training, test_split=test_split)
-        # import pdb; pdb.set_trace()
+        self.idx2label = self.dataset.idx2label
+        self.label2idx = self.dataset.label2idx
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
     
     # def stats_of_data(self):

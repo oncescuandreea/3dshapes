@@ -1,12 +1,12 @@
 from collections import Counter
 
-
 import numpy as np
 import torch
-from torchvision.utils import make_grid
 
+import torchvision
 from base import BaseTrainer
-from utils import MetricTracker, inf_loop, histogram_distribution
+from torchvision.utils import make_grid
+from utils import MetricTracker, add_margin, histogram_distribution, inf_loop
 
 _FACTORS_IN_ORDER = ['floor_hue', 'wall_hue', 'object_hue', 'scale', 'shape',
                      'orientation']
@@ -16,10 +16,11 @@ class Trainer(BaseTrainer):
     Trainer class
     """
     def __init__(self, model, criterion, metric_ftns, optimizer, config, data_loader,
-                 valid_data_loader=None, lr_scheduler=None, len_epoch=None):
+                 font_type, valid_data_loader=None, lr_scheduler=None, len_epoch=None):
         super().__init__(model, criterion, metric_ftns, optimizer, config)
         self.config = config
         self.data_loader = data_loader
+        self.font_type = font_type
         if len_epoch is None:
             # epoch-based training
             self.len_epoch = len(self.data_loader)
@@ -61,12 +62,11 @@ class Trainer(BaseTrainer):
         """
         self.model.train()
         self.train_metrics.reset()
-        # list_of_counters = self.data_loader.stats_of_data()
+
         if epoch == 1:
             list_of_counters = []
             for i in range(0, 6):
                 list_of_counters.append(Counter())
-        # list_of_counters = [Counter()] * 6
         for batch_idx, (data, target) in enumerate(self.data_loader):
             data, target = data.to(self.device), target.to(self.device)
 
@@ -80,6 +80,17 @@ class Trainer(BaseTrainer):
                 target_task = target[:, i]
                 if epoch == 1:
                     list_of_counters[i] += Counter(target_task.tolist())
+                new_org = add_margin(img_list=data[0:4, :, :],
+                                    labels=target_task,
+                                    predictions=output_task,
+                                    margins=5,
+                                    idx2label=self.data_loader.idx2label[i],
+                                    font=self.font_type,
+                                    )
+                self.writer.add_image(f"Image_train_marg_{_FACTORS_IN_ORDER[i]}_{epoch}",
+                                        torchvision.utils.make_grid(new_org),
+                                        epoch)
+                    
                 loss_task = self.criterion(output_task, target_task)
                 loss += loss_task
                 loss_title = f"loss_{_FACTORS_IN_ORDER[i]}"
@@ -109,7 +120,6 @@ class Trainer(BaseTrainer):
                 break
 
         #add histograms for data distribution
-        # import pdb; pdb.set_trace()
         if epoch == 1:
             histogram_distribution(list_of_counters, 'train')
 
@@ -151,6 +161,16 @@ class Trainer(BaseTrainer):
                     target_task = target[:, i]
                     if epoch == 1:
                         list_of_counters[i] += Counter(target_task.tolist())
+                    new_org = add_margin(img_list=data[0:4, :, :],
+                                            labels=target_task,
+                                            predictions=output_task,
+                                            margins=5,
+                                            idx2label=self.data_loader.idx2label[i],
+                                            font=self.font_type,
+                                        )
+                    self.writer.add_image(f"Image_val_marg_{_FACTORS_IN_ORDER[i]}_{epoch}",
+                                            torchvision.utils.make_grid(new_org),
+                                            epoch)
                     loss_task = self.criterion(output_task, target_task)
                     loss += loss_task
                     loss_title = f"loss_{_FACTORS_IN_ORDER[i]}"

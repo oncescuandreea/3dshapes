@@ -8,6 +8,7 @@ import model.metric as module_metric
 import model.model as module_arch
 from parse_config import ConfigParser
 from trainer import Trainer
+from pathlib import Path
 
 
 # fix random seeds for reproducibility
@@ -19,7 +20,7 @@ np.random.seed(SEED)
 
 def main(config):
     logger = config.get_logger('train')
-
+    font_type = config['font']['font_type']
     # setup data_loader instances
     data_loader = config.init_obj('data_loader', module_data)
     valid_data_loader = data_loader.split_validation()
@@ -42,7 +43,8 @@ def main(config):
                       config=config,
                       data_loader=data_loader,
                       valid_data_loader=valid_data_loader,
-                      lr_scheduler=lr_scheduler)
+                      lr_scheduler=lr_scheduler,
+                      font_type=font_type)
 
     trainer.train()
 

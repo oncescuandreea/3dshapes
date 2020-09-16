@@ -4,7 +4,12 @@ from itertools import repeat
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+import torch
+from PIL import Image, ImageDraw, ImageFont
+
+from torchvision import transforms
 
 _FACTORS_IN_ORDER = ['floor_hue', 'wall_hue', 'object_hue', 'scale', 'shape',
                      'orientation']
@@ -41,6 +46,46 @@ def histogram_distribution(list_counters: list, split: str):
         plt.xticks(range(count), list(counter_sorted.keys()))
         plt.savefig(f'{split}_{_FACTORS_IN_ORDER[j]}.jpg')
         plt.close()
+
+def add_margin(
+        img_list: torch.Tensor,
+        labels: torch.Tensor,
+        predictions: torch.Tensor,
+        margins: int,
+        idx2label: dict,
+        font: Path,
+):
+    transformToPil = transforms.Compose([transforms.ToPILImage()])
+    transformToTensor = transforms.Compose([transforms.ToTensor()])
+    new_images = []
+    for k, img in enumerate(img_list):
+        actual_predicted_label = np.argmax(list(predictions[k]))
+        if labels[k] == actual_predicted_label:
+            color = "green"
+        else:
+            color = "red"
+        pil_img = transformToPil(img.cpu())
+        width, height = pil_img.size
+        bottom = top = right = left = margins
+        new_width = width + right + left
+        new_height = height + top + bottom
+        result = Image.new(pil_img.mode, (new_width, new_height), color)
+        result.paste(pil_img, (left, top))
+
+        font = ImageFont.truetype("/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf", 12)
+        add_text = ImageDraw.Draw(result)
+        rgb_mean = list(map(int, [np.mean(np.asarray(result)[:, :, 0]),
+                                  np.mean(np.asarray(result)[:, :, 1]),
+                                  np.mean(np.asarray(result)[:, :, 2])]))
+        rgb_mean = [(el + 150) % 255 for el in rgb_mean]
+        add_text.text((10, 10), text=f"l:{idx2label[labels[k].item()]}",
+                       font=font, fill=(rgb_mean[0], rgb_mean[1], rgb_mean[2]), align="center")
+        add_text.text((10, 30), text=f"p:{idx2label[float(actual_predicted_label)]}",
+                      font=font, fill=(rgb_mean[0], rgb_mean[1], rgb_mean[2]), align="center")
+        result = transformToTensor(result)
+        new_images.append(result)
+    return new_images
+
 
 class MetricTracker:
     def __init__(self, *keys, writer=None):
