@@ -6,13 +6,14 @@ import data_loader.data_loaders as module_data
 import model.loss as module_loss
 import model.metric as module_metric
 import model.model as module_arch
+import model.text_model as module_arch_text
 from parse_config import ConfigParser
-from trainer import Trainer
+from trainer import TrainerRetrieval
 from pathlib import Path
 
 
 # fix random seeds for reproducibility
-SEED = 123
+SEED = 123 #used to be 123
 torch.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
@@ -22,12 +23,17 @@ def main(config):
     logger = config.get_logger('train')
     font_type = config['font']['font_type']
     # setup data_loader instances
+    print(module_data)
     data_loader = config.init_obj('data_loader', module_data)
     valid_data_loader = data_loader.split_validation()
 
     # build model architecture, then print to console
     model = config.init_obj('arch', module_arch)
     logger.info(model)
+
+    # build model architecture, then print to console
+    model_text = config.init_obj('arch_text', module_arch_text, 6)
+    logger.info(model_text)
 
     # get function handles of loss and metrics
     criterion = getattr(module_loss, config['loss'])
@@ -39,12 +45,12 @@ def main(config):
 
     lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
 
-    trainer = Trainer(model, criterion, metrics, optimizer,
-                      config=config,
-                      data_loader=data_loader,
-                      valid_data_loader=valid_data_loader,
-                      lr_scheduler=lr_scheduler,
-                      font_type=font_type)
+    trainer = TrainerRetrieval(model, model_text, criterion, metrics, optimizer,
+                               config=config,
+                               data_loader=data_loader,
+                               valid_data_loader=valid_data_loader,
+                               lr_scheduler=lr_scheduler,
+                               font_type=font_type)
 
     trainer.train()
 
