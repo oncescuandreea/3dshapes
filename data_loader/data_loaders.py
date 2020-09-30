@@ -1,6 +1,6 @@
 from torchvision import transforms
 from base import BaseDataLoader
-from model.dataset import Shapes3d
+from model.dataset import Shapes3d, Shapes3dRetrieval
 from collections import Counter
 
 
@@ -15,7 +15,7 @@ class ShapeLoader(BaseDataLoader):
             # transforms.Normalize((0.1307,), (0.3081,))
         ])
         self.data_dir = data_dir
-        self.dataset = Shapes3d(self.data_dir, transform=trsfm,
+        self.dataset = Shapes3dRetrieval(self.data_dir, transform=trsfm,
                                 train=training, test_split=test_split)
         self.idx2label = self.dataset.idx2label
         self.label2idx = self.dataset.label2idx
