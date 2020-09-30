@@ -6,6 +6,7 @@ import torch
 import torchvision
 from base import BaseTrainer
 from torchvision.utils import make_grid
+from model.metric import accuracy_retrieval
 from utils import MetricTracker, add_margin, histogram_distribution, inf_loop
 
 _FACTORS_IN_ORDER = ['floor_hue', 'wall_hue', 'object_hue', 'scale', 'shape',
@@ -80,7 +81,7 @@ class Trainer(BaseTrainer):
                 target_task = target[:, i]
                 if epoch == 1:
                     list_of_counters[i] += Counter(target_task.tolist())
-                new_org = add_margin(img_list=data[0:4, :, :],
+                new_org = add_margin(img_list=data[0:8, :, :],
                                     labels=target_task,
                                     predictions=output_task,
                                     margins=5,
@@ -161,7 +162,7 @@ class Trainer(BaseTrainer):
                     target_task = target[:, i]
                     if epoch == 1:
                         list_of_counters[i] += Counter(target_task.tolist())
-                    new_org = add_margin(img_list=data[0:4, :, :],
+                    new_org = add_margin(img_list=data[0:8, :, :],
                                             labels=target_task,
                                             predictions=output_task,
                                             margins=5,
@@ -203,3 +204,119 @@ class Trainer(BaseTrainer):
             current = batch_idx
             total = self.len_epoch
         return base.format(current, total, 100.0 * current / total)
+
+class TrainerRetrieval(BaseTrainer):
+    """
+    Trainer class for retrieval
+    """
+    def __init__(self, model, model_text, criterion, metric_ftns, optimizer, config,
+                 data_loader, font_type,
+                 valid_data_loader=None, lr_scheduler=None, len_epoch=None):
+        super().__init__(model, criterion, metric_ftns, optimizer, config)
+        self.model_text = model_text.to(self.device)
+        self.config = config
+        self.data_loader = data_loader
+        self.model_text = model_text
+        if len_epoch is None:
+            # epoch-based training
+            self.len_epoch = len(self.data_loader)
+        else:
+            # iteration-based training
+            self.data_loader = inf_loop(data_loader)
+            self.len_epoch = len_epoch
+        self.valid_data_loader = valid_data_loader
+        self.do_validation = self.valid_data_loader is not None
+        self.lr_scheduler = lr_scheduler
+        self.log_step = int(np.sqrt(data_loader.batch_size))
+
+        self.train_metrics = MetricTracker('loss', 'accuracy_retrieval', writer=self.writer)
+        self.valid_metrics = MetricTracker('loss', 'accuracy_retrieval', writer=self.writer)
+
+    def _train_epoch(self, epoch):
+        """
+        Training logic for an epoch
+
+        :param epoch: Integer, current training epoch.
+        :return: A log that contains average loss and metric in this epoch.
+        """
+        self.model_text.train()
+        self.model.train()
+        
+        self.train_metrics.reset()
+        for batch_idx, (data, target) in enumerate(self.data_loader):
+            data, target = data.to(self.device), target.to(self.device)
+            self.optimizer.zero_grad()
+            text_output = self.model_text(target.float())
+            output = self.model(data)
+            
+            loss = self.criterion(output, text_output, 10)
+            loss.backward()
+            self.optimizer.step()
+
+            self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
+            try:
+                self.train_metrics.update('loss', loss.item())
+            except AttributeError:
+                import pdb; pdb.set_trace()
+            self.train_metrics.update('accuracy_retrieval', accuracy_retrieval(output, text_output))
+
+            if batch_idx % self.log_step == 0:
+                self.logger.debug('Train Epoch: {} {} Loss: {:.6f}'.format(
+                    epoch,
+                    self._progress(batch_idx),
+                    loss.item()))
+                self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+
+            if batch_idx == self.len_epoch:
+                break
+        log = self.train_metrics.result()
+
+        if self.do_validation:
+            val_log = self._valid_epoch(epoch)
+            log.update(**{'val_'+k : v for k, v in val_log.items()})
+
+        if self.lr_scheduler is not None:
+            self.lr_scheduler.step()
+        return log
+
+    def _valid_epoch(self, epoch):
+        """
+        Validate after training an epoch
+
+        :param epoch: Integer, current training epoch.
+        :return: A log that contains information about validation
+        """
+        self.model.eval()
+        self.model_text.eval()
+        self.valid_metrics.reset()
+        with torch.no_grad():
+            for batch_idx, (data, target) in enumerate(self.valid_data_loader):
+                data, target = data.to(self.device), target.to(self.device)
+
+                text_output = self.model_text(target.float())
+                output = self.model(data)
+                loss = self.criterion(output, text_output, 10)
+
+                self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
+                try:
+                    self.valid_metrics.update('loss', loss.item())
+                except AttributeError:
+                    import pdb; pdb.set_trace()
+                self.valid_metrics.update('accuracy_retrieval', accuracy_retrieval(output, text_output))
+
+                self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+
+        # add histogram of model parameters to the tensorboard
+        for name, p in self.model.named_parameters():
+            self.writer.add_histogram(name, p, bins='auto')
+        return self.valid_metrics.result()
+
+    def _progress(self, batch_idx):
+        base = '[{}/{} ({:.0f}%)]'
+        if hasattr(self.data_loader, 'n_samples'):
+            current = batch_idx * self.data_loader.batch_size
+            total = self.data_loader.n_samples
+        else:
+            current = batch_idx
+            total = self.len_epoch
+        return base.format(current, total, 100.0 * current / total)   
