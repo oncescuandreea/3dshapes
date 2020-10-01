@@ -16,9 +16,11 @@ class ShapeLoader(BaseDataLoader):
         ])
         self.data_dir = data_dir
         self.dataset = Shapes3dRetrieval(self.data_dir, transform=trsfm,
-                                train=training, test_split=test_split)
-        self.idx2label = self.dataset.idx2label
-        self.label2idx = self.dataset.label2idx
+                                        train=training, test_split=test_split)
+        self.idx2label_ret = self.dataset.idx2label_ret
+        self.label2idx_ret = self.dataset.label2idx_ret
+        self.idx2label_init = self.dataset.idx2label_init
+        self.label2idx_init = self.dataset.label2idx_init
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
     
     # def stats_of_data(self):

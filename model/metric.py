@@ -28,7 +28,6 @@ def accuracy_tot(output, target, no_tasks):
             target_task = target[:, i]
             pred = torch.argmax(output_task, dim=1)
             assert pred.shape[0] == len(target_task)
-            
             correct += torch.sum(pred == target_task).item()
     return correct / (6 * len(target))
 

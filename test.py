@@ -5,6 +5,7 @@ import data_loader.data_loaders as module_data
 import model.loss as module_loss
 import model.metric as module_metric
 import model.model as module_arch
+import model.text_model as module_arch_text
 from parse_config import ConfigParser
 
 _FACTORS_IN_ORDER = ['floor_hue', 'wall_hue', 'object_hue', 'scale', 'shape',
@@ -26,6 +27,10 @@ def main(config):
     # build model architecture
     model = config.init_obj('arch', module_arch)
     logger.info(model)
+
+    # build model architecture, then print to console
+    model_text = config.init_obj('arch_text', module_arch_text)
+    logger.info(model_text)
 
     # get function handles of loss and metrics
     loss_fn = getattr(module_loss, config['loss'])

@@ -1,18 +1,16 @@
-import torch.nn.functional as F
-from torch.nn import MSELoss, MarginRankingLoss, TripletMarginLoss
 import numpy as np
-import torch
-
+import torch.nn.functional as F
+from torch.nn import MSELoss, TripletMarginLoss
 
 
 def nll_loss(output, target):
     # import pdb; pdb.set_trace()
     return F.nll_loss(output, target)
+
 def mse_loss(output, target):
     loss = MSELoss()
     return loss(output, target.double())
-def retrieval_loss(output, target):
-    return MarginRankingLoss(output, target)
+
 def retrieval_loss2(output, target, no_negatives: int):
     """Function returns triplet loss obtained from comparing the anchor
     with the corresponding postivie label and with another no_negatives
@@ -24,20 +22,11 @@ def retrieval_loss2(output, target, no_negatives: int):
 
     total_examples = no_negatives * batch_len
     batch_example_dim = len(output[0])
-    list_tensors = []
-    # for target_example in target:
-    #     list_tensors.append(target_example.reshape([1, batch_example_dim]))
-    # target_reshaped = torch.cat(list_tensors)
-    # import pdb; pdb.set_trace()
     for k, output_example in enumerate(output):
         output_example_reshaped = output_example.reshape([1, batch_example_dim])
         for idx in negative_idx:
             if idx != k:
-                try:
-                    batch_loss += triplet_loss(output_example_reshaped, target[k], target[idx])
-                except IndexError:
-                    import pdb; pdb.set_trace()
+                batch_loss += triplet_loss(output_example_reshaped, target[k], target[idx])
             else:
                 total_examples -= 1
     return batch_loss / total_examples
-

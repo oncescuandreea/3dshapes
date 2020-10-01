@@ -6,9 +6,7 @@ from pathlib import Path
 
 import h5py
 import numpy as np
-import torch
 from sklearn.preprocessing import LabelEncoder
-from skmultilearn.model_selection import iterative_train_test_split
 from torchvision import transforms
 from torchvision.datasets.vision import VisionDataset
 
@@ -54,7 +52,7 @@ def get_categorical_labels_list_retrieval(root: Path):
         # list_new_labels.append((le.transform(label)).astype(np.float))
     # with open(root / 'first10_name_labels_categorical.pkl', 'wb') as f:
     #     pickle.dump(list_new_labels, f)
-    print(list_new_labels)
+    # print(list_new_labels)
     return np.array(list_new_labels), label2idx, idx2label
 class Shapes3d(VisionDataset):
     def __init__(self, root: Path, train: bool,
@@ -126,34 +124,49 @@ class Shapes3dRetrieval(VisionDataset):
         print("Finished loading images")
         idxs = np.array(range(0, total_len))
         np.random.shuffle(idxs)
-        list_new_labels,\
-             label2idx, idx2label = get_categorical_labels_list_retrieval(root)
-        self.label2idx = label2idx
-        self.idx2label = idx2label
+        ############ retrieval labels and idx <-> label dictionaries
+        list_new_labels_ret,\
+             label2idx_ret, idx2label_ret = get_categorical_labels_list_retrieval(root)
+        self.label2idx_ret = label2idx_ret
+        self.idx2label_ret = idx2label_ret
+        ############ initial labels and idx <-> label dictionaries
+        print("Loading labels")
+        labels_init = dataset['labels'][:]
+        list_new_labels_init,\
+            label2idx_init, idx2label_init = get_categorical_labels_list(labels_init)
+        self.label2idx_init = label2idx_init
+        self.idx2label_init = idx2label_init
         print("labels transformed")
         if train is True:
             img_train = []
-            labels_train = []
+            labels_train_init = []
+            labels_train_ret = []
             no_len = int(0.8 * train_len)
             for index in idxs[0:no_len]:
                 img_train.append(images[index])
-                labels_train.append(list_new_labels[index])
+                labels_train_ret.append(list_new_labels_ret[index])
+                labels_train_init.append(list_new_labels_init[index])
             # import pdb; pdb.set_trace()
             self.images = np.array(img_train).reshape([no_len, 64, 64, 3])
-            self.labels_new = labels_train
+            self.labels_new_ret = labels_train_ret
+            self.labels_new_init = labels_train_init
         else:
             img_test = []
-            labels_test = []
+            labels_test_ret = []
+            labels_test_init = []
             for index in idxs[train_len:]:
                 img_test.append(images[index])
-                labels_test.append(list_new_labels[index])
+                labels_test_ret.append(list_new_labels_ret[index])
+                labels_test_init.append(list_new_labels_init[index])
             self.images = np.array(img_test).reshape([test_len, 64, 64, 3])
-            self.labels_new = labels_test
+            self.labels_new_ret = labels_test_ret
+            self.labels_new_init = labels_test_init
     def __getitem__(self, index):
-        label = self.labels_new[index]
+        label_ret = self.labels_new_ret[index]
+        label_init = self.labels_new_init[index]
         img = self.images[index]
         if self.transform is not None:
             img = self.transform(img)
-        return img, label
+        return img, label_ret, label_init
     def __len__(self):
-        return len(self.labels_new)
+        return len(self.labels_new_ret)

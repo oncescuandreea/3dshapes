@@ -8,8 +8,7 @@ import model.metric as module_metric
 import model.model as module_arch
 import model.text_model as module_arch_text
 from parse_config import ConfigParser
-from trainer import TrainerRetrieval
-from pathlib import Path
+from trainer import TrainerRetrievalAux
 
 
 # fix random seeds for reproducibility
@@ -37,20 +36,23 @@ def main(config):
 
     # get function handles of loss and metrics
     criterion = getattr(module_loss, config['loss'])
+    criterion_ret = getattr(module_loss, config['retrieval_loss'])
     metrics = [getattr(module_metric, met) for met in config['metrics']]
 
-    # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler
+    # build optimizer, learning rate scheduler. delete every
+    # lines containing lr_scheduler for disabling scheduler
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = config.init_obj('optimizer', torch.optim, trainable_params)
 
     lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
 
-    trainer = TrainerRetrieval(model, model_text, criterion, metrics, optimizer,
-                               config=config,
-                               data_loader=data_loader,
-                               valid_data_loader=valid_data_loader,
-                               lr_scheduler=lr_scheduler,
-                               font_type=font_type)
+    trainer = TrainerRetrievalAux(model, model_text, criterion, criterion_ret,
+                                  metrics, optimizer,
+                                  config=config,
+                                  data_loader=data_loader,
+                                  valid_data_loader=valid_data_loader,
+                                  lr_scheduler=lr_scheduler,
+                                  font_type=font_type)
 
     trainer.train()
 
