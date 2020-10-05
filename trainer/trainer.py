@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torchvision
 from torchvision.utils import make_grid
-from base import BaseTrainer
+from base import BaseTrainerRetrieval, BaseTrainer
 from model.metric import accuracy_retrieval
 from utils import MetricTracker, add_margin, histogram_distribution, inf_loop
 
@@ -177,11 +177,11 @@ class Trainer(BaseTrainer):
                     loss_task = self.criterion(output_task, target_task)
                     loss += loss_task
                     loss_title = f"loss_{_FACTORS_IN_ORDER[i]}"
-                    self.train_metrics.update(loss_title,
+                    self.valid_metrics.update(loss_title,
                                               loss_task.item())
                     for met in self.metric_ftns:
                         metric_title = f"{met.__name__}_{_FACTORS_IN_ORDER[i]}"
-                        self.train_metrics.update(metric_title,
+                        self.valid_metrics.update(metric_title,
                                                   met(output_task, target_task))
                 self.valid_metrics.update('loss', loss.item())
                 # for met in self.metric_ftns:
@@ -248,7 +248,7 @@ class TrainerRetrieval(BaseTrainer):
             self.optimizer.zero_grad()
             text_output = self.model_text(target_ret.float())
             output = self.model(data)
-            loss = self.criterion(output, text_output, 10)
+            loss = self.criterion(output, text_output, 30)
             loss.backward()
             self.optimizer.step()
 
@@ -322,7 +322,7 @@ class TrainerRetrieval(BaseTrainer):
         return base.format(current, total, 100.0 * current / total)
 
 
-class TrainerRetrievalAux(BaseTrainer):
+class TrainerRetrievalAux(BaseTrainerRetrieval):
     """
     Trainer class for retrieval with classification as extra info
     """
@@ -330,12 +330,9 @@ class TrainerRetrievalAux(BaseTrainer):
                  metric_ftns, optimizer, config,
                  data_loader, font_type,
                  valid_data_loader=None, lr_scheduler=None, len_epoch=None):
-        super().__init__(model, criterion, metric_ftns, optimizer, config)
-        self.model_text = model_text.to(self.device)
+        super().__init__(model, model_text, criterion, criterion_ret, metric_ftns, optimizer, config)
         self.config = config
         self.data_loader = data_loader
-        self.model_text = model_text
-        self.criterion_ret = criterion_ret
         self.font_type = font_type
         if len_epoch is None:
             # epoch-based training
@@ -389,12 +386,13 @@ class TrainerRetrievalAux(BaseTrainer):
             for i in range(0, 6):
                 list_of_counters.append(Counter())
         for batch_idx, (data, target_ret, target_init) in enumerate(self.data_loader):
+            # import pdb; pdb.set_trace()
             data, target_ret = data.to(self.device), target_ret.to(self.device)
             target_init = target_init.to(self.device)
             self.optimizer.zero_grad()
             text_output = self.model_text(target_ret.float())
             output_ret, output_init = self.model(data)
-            loss_ret = self.criterion_ret(output_ret, text_output, 10)
+            loss_ret = self.criterion_ret(output_ret, text_output, 20)
             no_tasks = len(target_init[0])
             loss_classification = 0
 
@@ -502,15 +500,15 @@ class TrainerRetrievalAux(BaseTrainer):
                     loss_task = self.criterion(output_task, target_task)
                     loss_classification += loss_task
                     loss_title = f"loss_{_FACTORS_IN_ORDER[i]}"
-                    self.train_metrics.update(loss_title,
+                    self.valid_metrics.update(loss_title,
                                               loss_task.item())
                     for met in self.metric_ftns:
                         metric_title = f"{met.__name__}_{_FACTORS_IN_ORDER[i]}"
-                        self.train_metrics.update(metric_title,
+                        self.valid_metrics.update(metric_title,
                                                   met(output_task, target_task))
                 self.valid_metrics.update('loss_classification', loss_classification.item())
                 loss_tot = loss_ret + loss_classification
-                self.train_metrics.update('loss_tot', loss_tot.item())
+                self.valid_metrics.update('loss_tot', loss_tot.item())
                 # for met in self.metric_ftns:
                 #     self.valid_metrics.update(met.__name__, met(output, target, no_tasks))
                 self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
