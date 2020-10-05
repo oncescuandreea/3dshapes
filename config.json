@@ -3,7 +3,11 @@
     "n_gpu": 1,
 
     "arch": {
-        "type": "ShapeModel",
+        "type": "ShapeModelRetrievalAux",
+        "args": {}
+    },
+    "arch_text": {
+        "type": "ShapeModelRetrievalText",
         "args": {}
     },
     "data_loader": {
@@ -25,6 +29,7 @@
         }
     },
     "loss": "nll_loss",
+    "retrieval_loss": "retrieval_loss2",
     "metrics": [
         "accuracy"
     ],
@@ -36,7 +41,7 @@
         }
     },
     "trainer": {
-        "epochs": 1,
+        "epochs": 2,
 
         "save_dir": "saved/",
         "save_period": 1,
@@ -46,5 +51,20 @@
         "early_stop": 10,
 
         "tensorboard": true
+    },
+    "trainer_ret": {
+        "epochs": 20,
+
+        "save_dir": "saved/",
+        "save_period": 1,
+        "verbosity": 2,
+        
+        "monitor": "min val_loss_retrieval",
+        "early_stop": 10,
+
+        "tensorboard": true
+    },
+    "font": {
+        "font_type": "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf"
     }
 }
