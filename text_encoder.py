@@ -11,7 +11,12 @@ from sklearn.preprocessing import LabelEncoder
 
 # FILE_NAME = '3dshapes.h5'
 # FILE_NAME = 'first10.hdf5'
-FILE_NAME = 'first20.hdf5'
+# FILE_NAME = 'first20.hdf5'
+FILE_NAME = 'first10per.hdf5'
+
+"""
+First run get_labels_in_words_form
+"""
 
 hue_dict = {0: "red", 0.1: "orange", 0.2: "yellow", 0.30000000000000004: "green",
             0.4: "light green", 0.5: "light blue", 0.6000000000000001: "blue",
@@ -59,7 +64,7 @@ def get_labels_in_words_form(root: Path, FILE_NAME: str):
         for i in range(0, 6):
             label_name_list.append(dicts[i][label[i]])
         labels_names.append(label_name_list)
-    with open(root / 'first20_labels.pkl', 'wb') as f:
+    with open(root / 'first10per_labels.pkl', 'wb') as f:
         pickle.dump(labels_names, f)
 
 def get_categorical_labels_retrieval(root: Path,
@@ -77,7 +82,7 @@ def get_categorical_labels_retrieval(root: Path,
     list_new_labels = []
     for label in labels_init:
         list_new_labels.append(le.transform(label))
-    with open(root / 'first20_name_labels_categorical.pkl', 'wb') as f:
+    with open(root / 'first10per_name_labels_categorical.pkl', 'wb') as f:
         pickle.dump(list_new_labels, f)
     return np.array(list_new_labels), label2idx, idx2label
 
@@ -96,8 +101,9 @@ def main():
         default="/scratch/shared/beegfs/oncescu/coding/libs/pt/3d-shapes-template/data",
     )
     args = parser.parse_args()
-    index_encoding(args.root, 'first20_labels.pkl')
-    # get_labels_in_words_form(args.root, FILE_NAME)
+    
+    get_labels_in_words_form(args.root, FILE_NAME)
+    index_encoding(args.root, 'first10per_labels.pkl')
 
 if __name__ == "__main__":
     main()
