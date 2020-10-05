@@ -14,7 +14,11 @@ def mse_loss(output, target):
 def retrieval_loss2(output, target, no_negatives: int):
     """Function returns triplet loss obtained from comparing the anchor
     with the corresponding postivie label and with another no_negatives
-    negative examples"""
+    negative examples
+    Inputs:
+        output: tensor containing image embedding
+        target: tensor containing text embedding
+        no_negatives: integer containing number of negative examples"""
     triplet_loss = TripletMarginLoss(margin=1.0, p=2)
     batch_len = len(target)
     batch_loss = 0
@@ -22,6 +26,7 @@ def retrieval_loss2(output, target, no_negatives: int):
 
     total_examples = no_negatives * batch_len
     batch_example_dim = len(output[0])
+    # import pdb; pdb.set_trace()
     for k, output_example in enumerate(output):
         output_example_reshaped = output_example.reshape([1, batch_example_dim])
         for idx in negative_idx:
