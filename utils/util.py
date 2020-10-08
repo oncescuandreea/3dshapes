@@ -45,7 +45,7 @@ def histogram_distribution(list_counters: list, split: str):
         # import pdb; pdb.set_trace()
         plt.bar(range(count), list(counter_sorted.values()), align='center')
         plt.xticks(range(count), list(counter_sorted.keys()))
-        plt.savefig(current_path / 'images' / f'{split}_{_FACTORS_IN_ORDER[j]}.jpg')
+        plt.savefig(Path(current_path) / 'images' / f'{split}_{_FACTORS_IN_ORDER[j]}.jpg')
         plt.close()
 
 def add_margin(
