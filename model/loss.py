@@ -11,7 +11,7 @@ def mse_loss(output, target):
     loss = MSELoss()
     return loss(output, target.double())
 
-def retrieval_loss2(output, target, no_negatives: int):
+def retrieval_loss2(output, target, no_negatives: int = 30):
     """Function returns triplet loss obtained from comparing the anchor
     with the corresponding postivie label and with another no_negatives
     negative examples

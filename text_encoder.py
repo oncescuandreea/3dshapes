@@ -52,20 +52,18 @@ def get_labels_in_words_form(root: Path, FILE_NAME: str):
     """ Function takes in actual labels and creates a new pkl file
     containing words corresponding to the number labels based on the
     defined dictionaries above"""
-    root = Path("/scratch/shared/beegfs/oncescu/coding/libs/pt/3d-shapes-template/data")
     dataset = h5py.File(os.path.join(root, FILE_NAME), 'r')
     labels = dataset['labels'][:]
     # images = dataset['images']
     dicts = [hue_dict, hue_dict, hue_dict, scale_dict, shape_dict, orientation_dict]
     
     labels_names = []
-    for idx, label in enumerate(labels):
+    for _, label in enumerate(labels):
         label_name_list = []
         for i in range(0, 6):
             label_name_list.append(dicts[i][label[i]])
         labels_names.append(label_name_list)
-    with open(root / 'first10per_labels.pkl', 'wb') as f:
-        pickle.dump(labels_names, f)
+    return labels_names
 
 def get_categorical_labels_retrieval(root: Path,
                                      list_unique_words: list,
@@ -102,7 +100,9 @@ def main():
     )
     args = parser.parse_args()
     
-    get_labels_in_words_form(args.root, FILE_NAME)
+    labels_names = get_labels_in_words_form(args.root, FILE_NAME)
+    with open(args.root / 'first10per_labels.pkl', 'wb') as f:
+        pickle.dump(labels_names, f)
     index_encoding(args.root, 'first10per_labels.pkl')
 
 if __name__ == "__main__":

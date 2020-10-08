@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch.nn.functional as F
 from base import BaseModel
 
 class ShapeModelRetrievalText(BaseModel):
@@ -9,6 +10,7 @@ class ShapeModelRetrievalText(BaseModel):
 
     def forward(self, x):
         # import pdb; pdb.set_trace()
+        # x = F.relu(self.fc1(x))
         x = self.fc1(x)
         x = self.fc2(x)
         return x

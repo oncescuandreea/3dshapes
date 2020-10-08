@@ -434,10 +434,10 @@ class TrainerRetrievalAux(BaseTrainerRetrieval):
             self.train_metrics.update('loss_tot', loss_tot.item())
 
             if batch_idx % self.log_step == 0:
-                self.logger.debug('Train Epoch: {} {} Loss: {:.6f}'.format(
+                self.logger.debug('Train Epoch: {} {} Loss total: {:.6f}'.format(
                     epoch,
                     self._progress(batch_idx),
-                    loss_classification.item()))
+                    loss_tot.item()))
                 self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
             if batch_idx == self.len_epoch:
@@ -555,11 +555,10 @@ class TrainerRetrievalComplete(TrainerRetrievalAux):
             list_of_counters = []
             for i in range(0, 6):
                 list_of_counters.append(Counter())
-        for batch_idx, (data, target_ret, target_init, target_act) in enumerate(self.data_loader):
-            # import pdb; pdb.set_trace()
-            data, target_ret = data.to(self.device), target_ret.to(self.device)
-            target_init = target_init.to(self.device)
-            target_act = target_act.to(self.device)
+        for batch_idx, (data, target_ret, target_init) in enumerate(self.data_loader):
+            data = data.to(self.device) #images as retrieved from input document
+            target_ret = target_ret.to(self.device) # labels formed from word indexes
+            target_init = target_init.to(self.device) # labels as classes
             self.optimizer.zero_grad()
 
             output_ret, output_init = self.model(data) #model returns image encoding (layer before last) and classification layer
@@ -569,7 +568,6 @@ class TrainerRetrievalComplete(TrainerRetrievalAux):
             for i in range(0, no_tasks):
                 output_task = output_init[i]
                 target_task = target_init[:, i]
-                target_act_task = target_act[:, i]
                 if epoch == 1:
                     list_of_counters[i] += Counter(target_task.tolist())
                 self.tensorboard_labeled_image(data, target_task,
@@ -583,16 +581,21 @@ class TrainerRetrievalComplete(TrainerRetrievalAux):
                     metric_title = f"{met.__name__}_{_FACTORS_IN_ORDER[i]}"
                     self.train_metrics.update(metric_title,
                                               met(output_task, target_task))
-                # andreea = list(map(dicts[i].get, list(target_act_task)))
-                word_labels = [dicts[i][a.item()] for a in list(target_act_task)]
+                # find class with highest probability for current task
+                max_loc = torch.argmax(output_task, dim=1)
+                # get label from initial data file corresponding to class
+                target_act_task = [self.data_loader.idx2label_init[i][a.item()] for a in max_loc]
+                # find the words associated with the initial label
+                word_labels = [dicts[i][a] for a in list(target_act_task)]
+                # index word to corpus index
                 word_to_id_predicted = [self.data_loader.label2idx_ret[0][word] for word in word_labels]
                 predicted_idx_from_words.append(word_to_id_predicted)
-            # import pdb; pdb.set_trace()
+            
             predicted_idx_from_words = torch.FloatTensor(predicted_idx_from_words).to(self.device).T
             text_output = self.model_text(predicted_idx_from_words)
             
             loss_ret = self.criterion_ret(output_ret, text_output)
-
+            
             loss_ret.backward()
             self.optimizer.step()
 
@@ -605,10 +608,10 @@ class TrainerRetrievalComplete(TrainerRetrievalAux):
                                       accuracy_retrieval(output_ret, text_output))
 
             if batch_idx % self.log_step == 0:
-                self.logger.debug('Train Epoch: {} {} Loss: {:.6f}'.format(
+                self.logger.debug('Train Epoch: {} {} Loss ret: {:.6f}'.format(
                     epoch,
                     self._progress(batch_idx),
-                    loss_classification.item()))
+                    loss_ret.item()))
                 self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
             if batch_idx == self.len_epoch:
@@ -641,20 +644,21 @@ class TrainerRetrievalComplete(TrainerRetrievalAux):
             list_of_counters = []
             for i in range(0, 6):
                 list_of_counters.append(Counter())
+        # print("reached 647")
         with torch.no_grad():
-            for batch_idx, (data, target_ret, target_init, target_act) in enumerate(self.valid_data_loader):
+            for batch_idx, (data, target_ret, target_init) in enumerate(self.valid_data_loader):
+                # print("reached 650")
                 data, target_ret = data.to(self.device), target_ret.to(self.device)
                 target_init = target_init.to(self.device)
-                target_act = target_act.to(self.device)
                 output_ret, output_init = self.model(data)
                 no_tasks = len(target_init[0])
                 loss_classification = 0.0
                 self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
+                # print("reached 658")
                 predicted_idx_from_words = []
                 for i in range(0, no_tasks):
                     output_task = output_init[i]
                     target_task = target_init[:, i]
-                    target_act_task = target_act[:, i]
                     if epoch == 1:
                         list_of_counters[i] += Counter(target_task.tolist())
                     self.tensorboard_labeled_image(data, target_task,
@@ -668,21 +672,23 @@ class TrainerRetrievalComplete(TrainerRetrievalAux):
                         metric_title = f"{met.__name__}_{_FACTORS_IN_ORDER[i]}"
                         self.valid_metrics.update(metric_title,
                                                   met(output_task, target_task))
-                    word_labels = [dicts[i][a.item()] for a in list(target_act_task)]
+                    # find class with highest probability for current task
+                    max_loc = torch.argmax(output_task, dim=1)
+                    # get label from initial data file corresponding to class
+                    target_act_task = [self.data_loader.idx2label_init[i][a.item()] for a in max_loc]
+                    # find the words associated with the initial label
+                    word_labels = [dicts[i][a] for a in list(target_act_task)]
+                    # index word to corpus index
                     word_to_id_predicted = [self.data_loader.label2idx_ret[0][word] for word in word_labels]
                     predicted_idx_from_words.append(word_to_id_predicted)
-                # import pdb; pdb.set_trace()
                 predicted_idx_from_words = torch.FloatTensor(predicted_idx_from_words).to(self.device).T
-                    
-                predicted_idx_from_words = torch.FloatTensor(predicted_idx_from_words).to(self.device)
+                
                 text_output = self.model_text(predicted_idx_from_words)
                 loss_ret = self.criterion_ret(output_ret, text_output)
 
                 self.valid_metrics.update('loss_classification', loss_classification.item())
-                # for met in self.metric_ftns:
-                #     self.valid_metrics.update(met.__name__, met(output, target, no_tasks))
+                
                 self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
-
                 try:
                     self.valid_metrics.update('loss_retrieval', loss_ret.item())
                 except AttributeError:

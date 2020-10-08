@@ -10,12 +10,14 @@ from sklearn.preprocessing import LabelEncoder
 from torchvision import transforms
 from torchvision.datasets.vision import VisionDataset
 
-FILE_NAME = '3dshapes.h5'
-NAME_LABELS = 'name_labels.pkl'
+# FILE_NAME = '3dshapes.h5'
+# NAME_LABELS = 'name_labels.pkl'
 # FILE_NAME = 'first10.hdf5'
 # NAME_LABELS = 'first10_labels.pkl'
 # FILE_NAME = 'first20.hdf5'
 # NAME_LABELS = 'first20_labels.pkl'
+FILE_NAME = 'first10per.hdf5'
+NAME_LABELS = 'first10per_labels.pkl'
 def get_categorical_labels_list(labels_init: list):
     list_new_labels = []
     idx2label = []
@@ -139,31 +141,39 @@ class Shapes3dRetrieval(VisionDataset):
         print("labels transformed")
         if train is True:
             img_train = []
+            # labels_train_actual = []
             labels_train_init = []
             labels_train_ret = []
-            no_len = int(0.8 * train_len)
+            no_len = int(1 * train_len)
             for index in idxs[0:no_len]:
                 img_train.append(images[index])
                 labels_train_ret.append(list_new_labels_ret[index])
                 labels_train_init.append(list_new_labels_init[index])
+                # labels_train_actual.append(labels_init[index])
             # import pdb; pdb.set_trace()
             self.images = np.array(img_train).reshape([no_len, 64, 64, 3])
             self.labels_new_ret = labels_train_ret
             self.labels_new_init = labels_train_init
+            # self.labels = labels_train_actual
         else:
             img_test = []
             labels_test_ret = []
             labels_test_init = []
+            # labels_test_actual = []
             for index in idxs[train_len:]:
                 img_test.append(images[index])
                 labels_test_ret.append(list_new_labels_ret[index])
                 labels_test_init.append(list_new_labels_init[index])
+                # labels_test_actual.append(labels_init[index])
             self.images = np.array(img_test).reshape([test_len, 64, 64, 3])
             self.labels_new_ret = labels_test_ret
             self.labels_new_init = labels_test_init
+            # self.labels = labels_test_actual
+
     def __getitem__(self, index):
         label_ret = self.labels_new_ret[index]
         label_init = self.labels_new_init[index]
+        # labels = self.labels[index]
         img = self.images[index]
         if self.transform is not None:
             img = self.transform(img)
