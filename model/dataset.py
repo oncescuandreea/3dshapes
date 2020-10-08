@@ -10,13 +10,17 @@ from sklearn.preprocessing import LabelEncoder
 from torchvision import transforms
 from torchvision.datasets.vision import VisionDataset
 
-FILE_NAME = '3dshapes.h5'
-NAME_LABELS = 'name_labels.pkl'
+# FILE_NAME = '3dshapes.h5'
+# NAME_LABELS = 'name_labels.pkl'
 # FILE_NAME = 'first10.hdf5'
 # NAME_LABELS = 'first10_labels.pkl'
 # FILE_NAME = 'first20.hdf5'
 # NAME_LABELS = 'first20_labels.pkl'
+FILE_NAME = 'first10per.hdf5'
+NAME_LABELS = 'first10per_labels.pkl'
 def get_categorical_labels_list(labels_init: list):
+    """ Function returns a integer encoding for the
+    provided labels"""
     list_new_labels = []
     idx2label = []
     label2idx = []
@@ -49,10 +53,6 @@ def get_categorical_labels_list_retrieval(root: Path):
     list_new_labels = []
     for label in labels:
         list_new_labels.append(le.transform(label))
-        # list_new_labels.append((le.transform(label)).astype(np.float))
-    # with open(root / 'first10_name_labels_categorical.pkl', 'wb') as f:
-    #     pickle.dump(list_new_labels, f)
-    # print(list_new_labels)
     return np.array(list_new_labels), label2idx, idx2label
 class Shapes3d(VisionDataset):
     def __init__(self, root: Path, train: bool,

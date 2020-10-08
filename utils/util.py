@@ -1,4 +1,5 @@
 import json
+import os
 from collections import OrderedDict
 from itertools import repeat
 from pathlib import Path
@@ -8,7 +9,6 @@ import numpy as np
 import pandas as pd
 import torch
 from PIL import Image, ImageDraw, ImageFont
-
 from torchvision import transforms
 
 _FACTORS_IN_ORDER = ['floor_hue', 'wall_hue', 'object_hue', 'scale', 'shape',
@@ -38,13 +38,14 @@ def histogram_distribution(list_counters: list, split: str):
     """ function takes in list of counters for each batch and
         returns histogram for 1st epoch. Split can be train,
         validation, test"""
+    current_directory = os.getcwd()
     for j, counter in enumerate(list_counters):
         count = len(counter)
         counter_sorted = dict(sorted(counter.items()))
         # import pdb; pdb.set_trace()
         plt.bar(range(count), list(counter_sorted.values()), align='center')
         plt.xticks(range(count), list(counter_sorted.keys()))
-        plt.savefig(f'{split}_{_FACTORS_IN_ORDER[j]}.jpg')
+        plt.savefig(current_directory / 'images' / f'{split}_{_FACTORS_IN_ORDER[j]}.jpg')
         plt.close()
 
 def add_margin(
