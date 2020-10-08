@@ -265,7 +265,7 @@ class TrainerRetrieval(BaseTrainer):
             self.train_metrics.update('accuracy_retrieval', accuracy_retrieval(output, text_output))
 
             if batch_idx % self.log_step == 0:
-                self.logger.debug('Train Epoch: {} {} Loss: {:.6f}'.format(
+                self.logger.debug('Train Epoch: {} {} Loss ret: {:.6f}'.format(
                     epoch,
                     self._progress(batch_idx),
                     loss.item()))
@@ -313,6 +313,8 @@ class TrainerRetrieval(BaseTrainer):
 
         # add histogram of model parameters to the tensorboard
         for name, p in self.model.named_parameters():
+            self.writer.add_histogram(name, p, bins='auto')
+        for name, p in self.model_text.named_parameters():
             self.writer.add_histogram(name, p, bins='auto')
         return self.valid_metrics.result()
 
@@ -434,10 +436,24 @@ class TrainerRetrievalAux(BaseTrainerRetrieval):
             self.train_metrics.update('loss_tot', loss_tot.item())
 
             if batch_idx % self.log_step == 0:
-                self.logger.debug('Train Epoch: {} {} Loss total: {:.6f}'.format(
+                self.logger.debug('Train Epoch: {} {} Loss tot: {:.6f}'.format(
                     epoch,
                     self._progress(batch_idx),
                     loss_tot.item()))
+                self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+            
+            if batch_idx % self.log_step == 0:
+                self.logger.debug('Train Epoch: {} {} Loss ret: {:.6f}'.format(
+                    epoch,
+                    self._progress(batch_idx),
+                    loss_ret.item()))
+                self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+            
+            if batch_idx % self.log_step == 0:
+                self.logger.debug('Train Epoch: {} {} Loss classification: {:.6f}'.format(
+                    epoch,
+                    self._progress(batch_idx),
+                    loss_classification.item()))
                 self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
             if batch_idx == self.len_epoch:
@@ -514,6 +530,8 @@ class TrainerRetrievalAux(BaseTrainerRetrieval):
 
         # add histogram of model parameters to the tensorboard
         for name, p in self.model.named_parameters():
+            self.writer.add_histogram(name, p, bins='auto')
+        for name, p in self.model_text.named_parameters():
             self.writer.add_histogram(name, p, bins='auto')
         return self.valid_metrics.result()
 
@@ -613,6 +631,13 @@ class TrainerRetrievalComplete(TrainerRetrievalAux):
                     self._progress(batch_idx),
                     loss_ret.item()))
                 self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+            
+            if batch_idx % self.log_step == 0:
+                self.logger.debug('Train Epoch: {} {} Loss classification: {:.6f}'.format(
+                    epoch,
+                    self._progress(batch_idx),
+                    loss_classification.item()))
+                self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
             if batch_idx == self.len_epoch:
                 break
@@ -700,5 +725,7 @@ class TrainerRetrievalComplete(TrainerRetrievalAux):
 
         # add histogram of model parameters to the tensorboard
         for name, p in self.model.named_parameters():
+            self.writer.add_histogram(name, p, bins='auto')
+        for name, p in self.model_text.named_parameters():
             self.writer.add_histogram(name, p, bins='auto')
         return self.valid_metrics.result()
