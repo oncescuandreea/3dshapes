@@ -17,7 +17,7 @@
             "batch_size": 128,
             "shuffle": true,
             "validation_split": 0.2,
-            "num_workers": 4
+            "num_workers": 12
         }
     },
     "optimizer": {
@@ -29,9 +29,12 @@
         }
     },
     "loss": "nll_loss",
-    "retrieval_loss": "retrieval_loss2",
+    "retrieval_loss": "retrieval_loss_full_matrix",
     "metrics": [
         "accuracy"
+    ],
+    "metrics_retrieval": [
+        "accuracy_retrieval", "compute_metric"
     ],
     "lr_scheduler": {
         "type": "StepLR",

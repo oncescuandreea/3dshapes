@@ -38,6 +38,7 @@ def main(config):
     criterion = getattr(module_loss, config['loss'])
     criterion_ret = getattr(module_loss, config['retrieval_loss'])
     metrics = [getattr(module_metric, met) for met in config['metrics']]
+    metrics_ret = [getattr(module_metric, met) for met in config['metrics_retrieval']]
 
     # build optimizer, learning rate scheduler. delete every
     # lines containing lr_scheduler for disabling scheduler
@@ -48,7 +49,7 @@ def main(config):
     lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
 
     # trainer = TrainerRetrievalAux(model, model_text, criterion, criterion_ret,
-    #                               metrics, optimizer,
+    #                               metrics, metrics_ret, optimizer,
     #                               config=config,
     #                               data_loader=data_loader,
     #                               valid_data_loader=valid_data_loader,
@@ -57,7 +58,8 @@ def main(config):
 
     
     trainer = TrainerRetrievalComplete(model, model_text, criterion, criterion_ret,
-                                       metrics, optimizer,
+                                       metrics, metrics_ret,
+                                       optimizer,
                                        config=config,
                                        data_loader=data_loader,
                                        valid_data_loader=valid_data_loader,

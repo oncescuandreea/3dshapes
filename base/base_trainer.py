@@ -175,7 +175,7 @@ class BaseTrainerRetrieval:
     Base class for all trainers
     """
     def __init__(self, model, model_text, criterion, criterion_ret,
-                 metric_ftns, optimizer, config):
+                 metric_ftns, metric_ftns_ret, optimizer, config):
         self.config = config
         self.logger = config.get_logger('trainer', config['trainer']['verbosity'])
 
@@ -190,6 +190,7 @@ class BaseTrainerRetrieval:
         self.criterion = criterion
         self.criterion_ret = criterion_ret
         self.metric_ftns = metric_ftns
+        self.metric_ftns_ret = metric_ftns_ret
         self.optimizer = optimizer
 
         cfg_trainer = config['trainer_ret']

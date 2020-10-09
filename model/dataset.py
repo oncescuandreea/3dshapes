@@ -10,14 +10,14 @@ from sklearn.preprocessing import LabelEncoder
 from torchvision import transforms
 from torchvision.datasets.vision import VisionDataset
 
-FILE_NAME = '3dshapes.h5'
-NAME_LABELS = 'name_labels.pkl'
+# FILE_NAME = '3dshapes.h5'
+# NAME_LABELS = 'name_labels.pkl'
 # FILE_NAME = 'first10.hdf5'
 # NAME_LABELS = 'first10_labels.pkl'
 # FILE_NAME = 'first20.hdf5'
 # NAME_LABELS = 'first20_labels.pkl'
-# FILE_NAME = 'first10per.hdf5'
-# NAME_LABELS = 'first10per_labels.pkl'
+FILE_NAME = 'first10per.hdf5'
+NAME_LABELS = 'first10per_labels.pkl'
 def get_categorical_labels_list(labels_init: list):
     list_new_labels = []
     idx2label = []

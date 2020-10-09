@@ -211,7 +211,7 @@ class Trainer(BaseTrainer):
             total = self.len_epoch
         return base.format(current, total, 100.0 * current / total)
 
-class TrainerRetrieval(BaseTrainer):
+class TrainerRetrieval(BaseTrainerRetrieval):
     """
     Trainer class for retrieval
     """
@@ -219,10 +219,8 @@ class TrainerRetrieval(BaseTrainer):
                  data_loader, font_type,
                  valid_data_loader=None, lr_scheduler=None, len_epoch=None):
         super().__init__(model, criterion, metric_ftns, optimizer, config)
-        self.model_text = model_text.to(self.device)
         self.config = config
         self.data_loader = data_loader
-        self.model_text = model_text
         if len_epoch is None:
             # epoch-based training
             self.len_epoch = len(self.data_loader)
@@ -334,10 +332,10 @@ class TrainerRetrievalAux(BaseTrainerRetrieval):
     Trainer class for retrieval with classification as extra info
     """
     def __init__(self, model, model_text, criterion, criterion_ret,
-                 metric_ftns, optimizer, config,
+                 metric_ftns, metric_ftns_ret, optimizer, config,
                  data_loader, font_type,
                  valid_data_loader=None, lr_scheduler=None, len_epoch=None):
-        super().__init__(model, model_text, criterion, criterion_ret, metric_ftns, optimizer, config)
+        super().__init__(model, model_text, criterion, criterion_ret, metric_ftns, metric_ftns_ret, optimizer, config)
         self.config = config
         self.data_loader = data_loader
         self.font_type = font_type
@@ -367,7 +365,8 @@ class TrainerRetrievalAux(BaseTrainerRetrieval):
                                            'loss_orientation', 'accuracy_floor_hue',
                                            'accuracy_wall_hue', 'accuracy_object_hue',
                                            'accuracy_scale', 'accuracy_shape',
-                                           'accuracy_orientation', 'accuracy',
+                                           'accuracy_orientation', 'acc_ret_MR',
+                                           'acc_ret_R1', 'acc_ret_R5', 'acc_ret_R10',
                                            writer=self.writer)
         self.valid_metrics = MetricTracker('loss_classification', 'accuracy_retrieval',
                                            'loss_floor_hue', 'loss_wall_hue', 'loss_object_hue',
@@ -375,7 +374,8 @@ class TrainerRetrievalAux(BaseTrainerRetrieval):
                                            'loss_orientation', 'accuracy_floor_hue',
                                            'accuracy_wall_hue', 'accuracy_object_hue',
                                            'accuracy_scale', 'accuracy_shape',
-                                           'accuracy_orientation', 'accuracy',
+                                           'accuracy_orientation', 'acc_ret_MR',
+                                           'acc_ret_R1', 'acc_ret_R5', 'acc_ret_R10',
                                            writer=self.writer)
 
     def _train_epoch(self, epoch):
@@ -430,8 +430,7 @@ class TrainerRetrievalAux(BaseTrainerRetrieval):
                 self.train_metrics.update('loss_retrieval', loss_ret.item())
             except AttributeError:
                 print("Not enough data")
-            self.train_metrics.update('accuracy_retrieval',
-                                      accuracy_retrieval(output_ret, text_output))
+            self.train_metrics_update_retrieval(output_ret, text_output)
             self.train_metrics.update('loss_classification', loss_classification.item())
             self.train_metrics.update('loss_tot', loss_tot.item())
 
@@ -523,8 +522,7 @@ class TrainerRetrievalAux(BaseTrainerRetrieval):
                     self.valid_metrics.update('loss_retrieval', loss_ret.item())
                 except AttributeError:
                     print("Not enough data")
-                self.valid_metrics.update('accuracy_retrieval',
-                                          accuracy_retrieval(output_ret, text_output))
+                self.valid_metrics_update_retrieval(output_ret, text_output)
 
                 self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
@@ -547,6 +545,35 @@ class TrainerRetrievalAux(BaseTrainerRetrieval):
                                 torchvision.utils.make_grid(new_org),
                                 epoch)
     
+    def train_metrics_update_retrieval(self, output_ret, text_output):
+        for met in self.metric_ftns_ret:
+            if met.__name__ == 'compute_metric':
+                accuracies = met(output_ret, text_output)
+                for val in ['R1', 'R5', 'R10', 'MR']:
+                    metric_title = f"acc_ret_{val}"
+                    self.train_metrics.update(metric_title,
+                                              accuracies[val])
+            else:
+                metric_title = f"{met.__name__}"
+                try:
+                    self.train_metrics.update(metric_title,
+                                            met(output_ret, text_output))
+                except NotImplementedError:
+                    import pdb; pdb.set_trace()
+    
+    def valid_metrics_update_retrieval(self, output_ret, text_output):
+        for met in self.metric_ftns_ret:
+            if met.__name__ == 'compute_metric':
+                accuracies = met(output_ret, text_output)
+                for val in ['R1', 'R5', 'R10', 'MR']:
+                    metric_title = f"acc_ret_{val}"
+                    self.valid_metrics.update(metric_title,
+                                              accuracies[val])
+            else:
+                metric_title = f"{met.__name__}"
+                self.valid_metrics.update(metric_title,
+                                        met(output_ret, text_output))
+
     def _progress(self, batch_idx):
         base = '[{}/{} ({:.0f}%)]'
         if hasattr(self.data_loader, 'n_samples'):
@@ -622,8 +649,7 @@ class TrainerRetrievalComplete(TrainerRetrievalAux):
                 self.train_metrics.update('loss_retrieval', loss_ret.item())
             except AttributeError:
                 print("Not enough data")
-            self.train_metrics.update('accuracy_retrieval',
-                                      accuracy_retrieval(output_ret, text_output))
+            self.train_metrics_update_retrieval(output_ret, text_output)
 
             if batch_idx % self.log_step == 0:
                 self.logger.debug('Train Epoch: {} {} Loss ret: {:.6f}'.format(
@@ -718,8 +744,7 @@ class TrainerRetrievalComplete(TrainerRetrievalAux):
                     self.valid_metrics.update('loss_retrieval', loss_ret.item())
                 except AttributeError:
                     print("Not enough data")
-                self.valid_metrics.update('accuracy_retrieval',
-                                          accuracy_retrieval(output_ret, text_output))
+                self.valid_metrics_update_retrieval(output_ret, text_output)
 
                 self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 

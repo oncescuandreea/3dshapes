@@ -1,23 +1,6 @@
+import numpy as np
 import torch
-
-def pairwise_distances(x, y=None):
-    '''
-    Input: x is a Nxd matrix
-           y is an optional Mxd matirx
-    Output: dist is a NxM matrix where dist[i,j] is the square norm between x[i,:] and y[j,:]
-            if y is not given then use 'y=x'.
-    i.e. dist[i,j] = ||x[i,:]-y[j,:]||^2
-    obtained from https://discuss.pytorch.org/t/efficient-distance-matrix-computation/9065
-    '''
-    x_norm = (x**2).sum(1).view(-1, 1)
-    if y is not None:
-        y_norm = (y**2).sum(1).view(1, -1)
-    else:
-        y = x
-        y_norm = x_norm.view(1, -1)
-
-    dist = x_norm + y_norm - 2.0 * torch.mm(x, torch.transpose(y, 0, 1))
-    return dist
+from utils.util import pairwise_distances, similarity_matrix_01l2
 
 def accuracy_tot(output, target, no_tasks):
     correct = 0
@@ -58,3 +41,24 @@ def top_k_acc(output, target, k=3):
         for i in range(k):
             correct += torch.sum(pred[:, i] == target).item()
     return correct / len(target)
+
+def compute_metric(output, target):
+    """Started from:
+    https://github.com/antoine77340/Mixture-of-Embedding-Experts/blob/master/loss.py#L30
+    """
+    distance_matrix = pairwise_distances(output, target)
+    x = similarity_matrix_01l2(distance_matrix).cpu().detach().numpy()
+    sx = np.sort(-x, axis=1)
+    d = np.diag(-x)
+    d = d[:, np.newaxis]
+    ind = sx - d
+    ind = np.where(ind == 0)
+    ind = ind[1]
+
+    metrics = {}
+    metrics['R1'] = float(np.sum(ind == 0)) / len(ind)
+    metrics['R5'] = float(np.sum(ind < 5)) / len(ind)
+    metrics['R10'] = float(np.sum(ind < 10)) / len(ind)
+    metrics['MR'] = np.median(ind) + 1
+
+    return metrics

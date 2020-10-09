@@ -87,6 +87,38 @@ def add_margin(
         new_images.append(result)
     return new_images
 
+def similarity_matrix_01l2(dist: torch.Tensor):
+    """Transforming the L2 distance matrix calculated using the
+    pairwise_distance function into a similarity matrix to be
+    used for the MaxMarginRankingLoss class"""
+    n, m = dist.shape
+    min_values = dist.min(1).values.to(float)
+    max_values = dist.min(1).values.to(float)
+    min_values_tensor = min_values.unsqueeze(-1).expand([n, m])
+    max_values_tensor = max_values.unsqueeze(-1).expand([n, m])
+    epsilon = torch.tensor([0.00001]).expand([n, m]).cuda()
+    normalised_cf = torch.div((dist.to(float) - min_values_tensor), (max_values_tensor - min_values_tensor + epsilon))
+    return torch.tensor([1]).expand([n, m]).cuda() - normalised_cf
+
+def pairwise_distances(x, y=None):
+    '''
+    Input: x is a Nxd matrix
+           y is an optional Mxd matirx
+    Output: dist is a NxM matrix where dist[i,j] is the square norm between x[i,:] and y[j,:]
+            if y is not given then use 'y=x'.
+    i.e. dist[i,j] = ||x[i,:]-y[j,:]||^2
+    obtained from https://discuss.pytorch.org/t/efficient-distance-matrix-computation/9065
+    '''
+    # import pdb; pdb.set_trace()
+    x_norm = (x**2).sum(1).view(-1, 1)
+    if y is not None:
+        y_norm = (y**2).sum(1).view(1, -1)
+    else:
+        y = x
+        y_norm = x_norm.view(1, -1)
+
+    dist = x_norm + y_norm - 2.0 * torch.mm(x, torch.transpose(y, 0, 1))
+    return dist
 
 class MetricTracker:
     def __init__(self, *keys, writer=None):
