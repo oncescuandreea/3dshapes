@@ -335,6 +335,11 @@ class BaseTrainerRetrieval:
                                 "checkpoint. This may yield an exception while state_dict is being loaded.")
         self.model.load_state_dict(checkpoint['state_dict'])
 
+        if checkpoint['config']['arch_text'] != self.config['arch_text']:
+            self.logger.warning("Warning: Text architecture configuration given in config file is different from that of "
+                                "checkpoint. This may yield an exception while state_dict is being loaded.")
+        self.model_text.load_state_dict(checkpoint['state_dict_text'])
+
         # load optimizer state from checkpoint only when optimizer type is not changed.
         if checkpoint['config']['optimizer']['type'] != self.config['optimizer']['type']:
             self.logger.warning("Warning: Optimizer type given in config file is different from that of checkpoint. "
