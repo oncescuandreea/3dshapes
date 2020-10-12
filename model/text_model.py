@@ -14,3 +14,14 @@ class ShapeModelRetrievalText(BaseModel):
         x = self.fc1_text(x)
         x = self.fc2_text(x)
         return x
+
+class ShapeModelRetrievalTextEmb(BaseModel):
+    def __init__(self):
+        super().__init__()
+        # self.embedding = nn.Embedding(37, 150)
+        self.fc1_text = nn.Linear(900, 150)
+
+    def forward(self, x):
+        # import pdb; pdb.set_trace()
+        x = self.fc1_text(x)
+        return x

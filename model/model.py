@@ -143,7 +143,9 @@ class ShapeModelRetrievalAux(BaseModel):
         x_ret = self.fc1(x)
         x = F.relu(self.fc1(x))
         out_objs = []
+        out_objs_softmax = []
         for obj in self.objs:
+            out_objs_softmax.append(F.softmax(obj(x), dim=1))
             out_objs.append(F.log_softmax(obj(x), dim=1))
-        return x_ret, out_objs
+        return x_ret, out_objs, out_objs_softmax
         

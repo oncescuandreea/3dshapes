@@ -7,7 +7,7 @@
         "args": {}
     },
     "arch_text": {
-        "type": "ShapeModelRetrievalText",
+        "type": "ShapeModelRetrievalTextEmb",
         "args": {}
     },
     "data_loader": {

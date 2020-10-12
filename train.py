@@ -31,7 +31,7 @@ def main(config):
     logger.info(model)
 
     # build model architecture, then print to console
-    model_text = config.init_obj('arch_text', module_arch_text, 6)
+    model_text = config.init_obj('arch_text', module_arch_text)
     logger.info(model_text)
 
     # get function handles of loss and metrics
