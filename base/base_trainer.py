@@ -299,7 +299,7 @@ class BaseTrainerRetrieval:
         :param save_best: if True, rename the saved checkpoint to 'model_best.pth'
         """
         arch = type(self.model).__name__
-        arch_text = type(self.model).__name__
+        arch_text = type(self.model_text).__name__
         state = {
             'arch': arch,
             'arch_text': arch_text,

@@ -587,54 +587,6 @@ class TrainerRetrievalAux(BaseTrainerRetrieval):
 
 
 class TrainerRetrievalComplete(TrainerRetrievalAux):
-    def __init__(self, model, model_text, criterion, criterion_ret,
-                metric_ftns, metric_ftns_ret, optimizer, config,
-                data_loader, font_type,
-                valid_data_loader=None, lr_scheduler=None, len_epoch=None):
-        super().__init__(model, model_text, criterion, criterion_ret, metric_ftns,
-                         metric_ftns_ret, optimizer, config, data_loader, font_type)
-        self.config = config
-        self.data_loader = data_loader
-        self.font_type = font_type
-        if len_epoch is None:
-            # epoch-based training
-            self.len_epoch = len(self.data_loader)
-        else:
-            # iteration-based training
-            self.data_loader = inf_loop(data_loader)
-            self.len_epoch = len_epoch
-        self.valid_data_loader = valid_data_loader
-        self.do_validation = self.valid_data_loader is not None
-        self.lr_scheduler = lr_scheduler
-        self.log_step = int(np.sqrt(data_loader.batch_size))
-        self.no_tasks = len(_FACTORS_IN_ORDER)
-        list_metrics = []
-        for m in self.metric_ftns:
-            for i in range(0, self.no_tasks):
-                metric_task = f"{m.__name__}_{_FACTORS_IN_ORDER[i]}"
-                list_metrics.append(metric_task)
-        list_losses = []
-        self.embedding = nn.Embedding(37, 150)
-        for i in range(0, self.no_tasks):
-            list_losses.append(f"loss_{_FACTORS_IN_ORDER[i]}")
-        self.train_metrics = MetricTracker('loss_classification', 'accuracy_retrieval',
-                                           'loss_floor_hue', 'loss_wall_hue', 'loss_object_hue',
-                                           'loss_retrieval', 'loss_tot', 'loss_scale', 'loss_shape',
-                                           'loss_orientation', 'accuracy_floor_hue',
-                                           'accuracy_wall_hue', 'accuracy_object_hue',
-                                           'accuracy_scale', 'accuracy_shape',
-                                           'accuracy_orientation', 'acc_ret_MR',
-                                           'acc_ret_R1', 'acc_ret_R5', 'acc_ret_R10',
-                                           writer=self.writer)
-        self.valid_metrics = MetricTracker('loss_classification', 'accuracy_retrieval',
-                                           'loss_floor_hue', 'loss_wall_hue', 'loss_object_hue',
-                                           'loss_retrieval', 'loss_tot', 'loss_scale', 'loss_shape',
-                                           'loss_orientation', 'accuracy_floor_hue',
-                                           'accuracy_wall_hue', 'accuracy_object_hue',
-                                           'accuracy_scale', 'accuracy_shape',
-                                           'accuracy_orientation', 'acc_ret_MR',
-                                           'acc_ret_R1', 'acc_ret_R5', 'acc_ret_R10',
-                                           writer=self.writer)
     def _train_epoch(self, epoch):
         """
         Training logic for an epoch
@@ -649,6 +601,7 @@ class TrainerRetrievalComplete(TrainerRetrievalAux):
             list_of_counters = []
             for i in range(0, 6):
                 list_of_counters.append(Counter())
+        embedding = self.model_text.embedding
         for batch_idx, (data, target_ret, target_init) in enumerate(self.data_loader):
             data = data.to(self.device) #images as retrieved from input document
             target_ret = target_ret.to(self.device) # labels formed from word indexes
@@ -686,8 +639,8 @@ class TrainerRetrievalComplete(TrainerRetrievalAux):
                 # index word to corpus index
                 word_to_id_predicted = [self.data_loader.label2idx_ret[0][word] for word in word_labels]
                 # word ids to embeddings
-                task_words_embeddings = self.embedding(torch.tensor(word_to_id_predicted))
-                predicted_mean = torch.matmul(output_softmax[i], task_words_embeddings.cuda())
+                task_words_embeddings = embedding(torch.tensor(word_to_id_predicted).cuda())
+                predicted_mean = torch.matmul(output_softmax[i], task_words_embeddings)
                 if i == 0:
                     predicted_idx_from_words = predicted_mean
                 else:
@@ -753,6 +706,7 @@ class TrainerRetrievalComplete(TrainerRetrievalAux):
             list_of_counters = []
             for i in range(0, 6):
                 list_of_counters.append(Counter())
+        embedding = self.model_text.embedding
         # print("reached 647")
         with torch.no_grad():
             for batch_idx, (data, target_ret, target_init) in enumerate(self.valid_data_loader):
@@ -791,8 +745,8 @@ class TrainerRetrievalComplete(TrainerRetrievalAux):
                     # index word to corpus index
                     word_to_id_predicted = [self.data_loader.label2idx_ret[0][word] for word in word_labels]
                     # word ids to embeddings
-                    task_words_embeddings = self.embedding(torch.tensor(word_to_id_predicted))
-                    predicted_mean = torch.matmul(output_softmax[i], task_words_embeddings.cuda())
+                    task_words_embeddings = embedding(torch.tensor(word_to_id_predicted).cuda())
+                    predicted_mean = torch.matmul(output_softmax[i], task_words_embeddings)
                     if i == 0:
                         predicted_idx_from_words = predicted_mean
                     else:
